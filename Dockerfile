@@ -1,6 +1,7 @@
 FROM alpine:3.21 AS base
 
 RUN apk add --no-cache \
+    bash \
     curl \
     git \
     fzf \
@@ -30,6 +31,7 @@ RUN curl https://mise.run | sh && \
 ENV MISE_DATA_DIR=/opt/mise
 ENV MISE_CACHE_DIR=/opt/mise/cache
 ENV PATH="/opt/mise/shims:${PATH}"
+SHELL ["/bin/bash", "-c"]
 
 # install runtimes
 RUN mise use -g go@latest python@latest node@lts && \
