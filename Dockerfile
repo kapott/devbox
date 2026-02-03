@@ -20,7 +20,9 @@ RUN apk add --no-cache \
     sqlite-dev \
     bzip2-dev \
     xz-dev \
-    # needed for node
+    # needed for node (glibc compat for prebuilt binaries)
+    gcompat \
+    libstdc++ \
     linux-headers
 
 # install mise
