@@ -106,6 +106,21 @@ RUN chezmoi init
 # set zsh as default shell for root
 RUN chsh -s /bin/zsh root
 
+# cleanup to reduce image size
+RUN rm -rf \
+    /var/lib/apt/lists/* \
+    /var/cache/apt/* \
+    /var/log/* \
+    /usr/share/doc/* \
+    /usr/share/man/* \
+    /usr/share/info/* \
+    /usr/share/locale/* \
+    /tmp/* \
+    /root/.cache/* \
+    /opt/mise/cache/* \
+    && find / -name "*.pyc" -delete 2>/dev/null || true \
+    && find / -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null || true
+
 WORKDIR /workspace
 ENV SHELL=/bin/zsh
 ENV TERM=xterm-256color
