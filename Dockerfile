@@ -1,29 +1,28 @@
-FROM alpine:3.21 AS base
+FROM debian:bookworm-slim AS base
 
-RUN apk add --no-cache \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     bash \
     curl \
+    ca-certificates \
     git \
     fzf \
     ripgrep \
     zsh \
     tmux \
     neovim \
-    chezmoi \
-    # build essentials for mise/plugins
-    build-base \
-    # needed for python
+    # build essentials for mise/python
+    build-essential \
     libffi-dev \
-    openssl-dev \
-    zlib-dev \
-    readline-dev \
-    sqlite-dev \
-    bzip2-dev \
-    xz-dev \
-    # needed for node (glibc compat for prebuilt binaries)
-    gcompat \
-    libstdc++ \
-    linux-headers
+    libssl-dev \
+    zlib1g-dev \
+    libreadline-dev \
+    libsqlite3-dev \
+    libbz2-dev \
+    liblzma-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# install chezmoi
+RUN curl -sfL https://git.io/chezmoi | sh -s -- -b /usr/local/bin
 
 # install mise
 RUN curl https://mise.run | sh && \
@@ -33,7 +32,6 @@ RUN curl https://mise.run | sh && \
 ENV MISE_DATA_DIR=/opt/mise
 ENV MISE_CACHE_DIR=/opt/mise/cache
 ENV PATH="/opt/mise/shims:${PATH}"
-SHELL ["/bin/bash", "-c"]
 
 # install runtimes
 RUN mise use -g go@latest python@latest node@lts && \
@@ -82,8 +80,8 @@ export PATH="/opt/mise/shims:$PATH"
 eval "$(mise activate zsh)"
 
 # fzf
-source /usr/share/fzf/key-bindings.zsh
-source /usr/share/fzf/completion.zsh
+[ -f /usr/share/doc/fzf/examples/key-bindings.zsh ] && source /usr/share/doc/fzf/examples/key-bindings.zsh
+[ -f /usr/share/doc/fzf/examples/completion.zsh ] && source /usr/share/doc/fzf/examples/completion.zsh
 
 # basic prompt
 PROMPT='%F{blue}%~%f %# '
@@ -91,7 +89,6 @@ PROMPT='%F{blue}%~%f %# '
 # aliases
 alias vim=nvim
 alias vi=nvim
-alias lg=lazygit
 EOF
 
 # tmux config
@@ -106,8 +103,8 @@ EOF
 # init chezmoi without repo (local mode)
 RUN chezmoi init
 
-# set shell
-RUN sed -i 's|/bin/ash|/bin/zsh|' /etc/passwd
+# set zsh as default shell for root
+RUN chsh -s /bin/zsh root
 
 WORKDIR /workspace
 ENV SHELL=/bin/zsh
