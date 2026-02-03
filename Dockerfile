@@ -42,19 +42,20 @@ RUN git clone --filter=blob:none --branch=stable \
     https://github.com/folke/lazy.nvim.git \
     /root/.local/share/nvim/lazy/lazy.nvim
 
-# minimal lazy.nvim bootstrap config
-RUN mkdir -p /root/.config/nvim/lua && \
-    cat > /root/.config/nvim/init.lua << 'EOF'
+# neovim config
+RUN mkdir -p /root/.config/nvim/lua/plugins
+
+# init.lua - main config
+RUN cat > /root/.config/nvim/init.lua << 'EOF'
 vim.g.mapleader = " "
 vim.g.maplocalleader = " "
 
+-- bootstrap lazy.nvim
 local lazypath = vim.fn.stdpath("data") .. "/lazy/lazy.nvim"
 vim.opt.rtp:prepend(lazypath)
 
 require("lazy").setup({
-  spec = {
-    { import = "plugins" },
-  },
+  spec = { { import = "plugins" } },
   defaults = { lazy = true },
   performance = {
     rtp = {
@@ -65,12 +66,257 @@ require("lazy").setup({
     },
   },
 })
+
+require("options")
+require("keymaps")
+require("autocmds")
 EOF
 
-RUN mkdir -p /root/.config/nvim/lua/plugins && \
-    cat > /root/.config/nvim/lua/plugins/init.lua << 'EOF'
+# options.lua
+RUN cat > /root/.config/nvim/lua/options.lua << 'EOF'
+local opt = vim.opt
+
+-- encoding
+opt.encoding = "utf-8"
+opt.fileencoding = "utf-8"
+
+-- search
+opt.incsearch = true
+opt.hlsearch = true
+opt.ignorecase = true
+opt.smartcase = true
+
+-- appearance
+opt.number = true
+opt.relativenumber = true
+opt.colorcolumn = "81"
+opt.wrap = true
+opt.showbreak = "↪ "
+opt.listchars = { tab = "→ ", eol = "↲", nbsp = "␣", trail = "•", extends = "⟩", precedes = "⟨" }
+opt.termguicolors = true
+opt.background = "dark"
+opt.signcolumn = "yes"
+opt.scrolloff = 1
+opt.fillchars = { vert = " " }
+opt.laststatus = 2
+
+-- indentation
+opt.tabstop = 2
+opt.softtabstop = 2
+opt.shiftwidth = 2
+opt.expandtab = false
+opt.autoindent = true
+opt.smartindent = true
+
+-- behavior
+opt.backspace = "indent,eol,start"
+opt.clipboard = "unnamedplus"
+opt.splitbelow = true
+opt.splitright = true
+opt.visualbell = true
+opt.errorbells = false
+opt.textwidth = 0
+EOF
+
+# keymaps.lua
+RUN cat > /root/.config/nvim/lua/keymaps.lua << 'EOF'
+local map = vim.keymap.set
+
+-- split navigation
+map("n", "<C-h>", "<C-w>h", { desc = "Move to left split" })
+map("n", "<C-j>", "<C-w>j", { desc = "Move to below split" })
+map("n", "<C-k>", "<C-w>k", { desc = "Move to above split" })
+map("n", "<C-l>", "<C-w>l", { desc = "Move to right split" })
+
+-- split resizing
+map("n", "<C-Left>", ":vertical resize +3<CR>", { silent = true })
+map("n", "<C-Right>", ":vertical resize -3<CR>", { silent = true })
+map("n", "<C-Up>", ":resize +3<CR>", { silent = true })
+map("n", "<C-Down>", ":resize -3<CR>", { silent = true })
+
+-- split orientation toggle
+map("n", "<Leader>th", "<C-w>t<C-w>H", { desc = "Change to horizontal split" })
+map("n", "<Leader>tk", "<C-w>t<C-w>K", { desc = "Change to vertical split" })
+
+-- tabs
+map("n", "<Tab>", "gt", { desc = "Next tab" })
+map("n", "<S-Tab>", "gT", { desc = "Previous tab" })
+map("n", "<C-t>", ":tabnew<CR>", { silent = true, desc = "New tab" })
+
+-- terminal
+map("n", "<Leader>tt", ":vsplit | terminal<CR>", { desc = "Open terminal in vsplit" })
+
+-- toggle invisible chars
+map("n", "<Leader>ti", ":set list!<CR>", { desc = "Toggle invisible chars" })
+
+-- strip trailing whitespace
+map("n", "<F5>", function()
+  local pos = vim.api.nvim_win_get_cursor(0)
+  vim.cmd([[%s/\s\+$//e]])
+  vim.api.nvim_win_set_cursor(0, pos)
+end, { desc = "Strip trailing whitespace" })
+
+-- create file under cursor
+map("n", "<Leader>gf", function()
+  local file = vim.fn.expand("<cfile>")
+  local filepath = vim.fn.expand("%:p:h") .. "/" .. file
+  if vim.fn.filereadable(filepath) == 1 then
+    vim.cmd("normal! gf")
+  else
+    vim.fn.system("touch " .. filepath)
+    print("File created: " .. filepath)
+    vim.cmd("normal! gf")
+  end
+end, { desc = "Create/go to file under cursor" })
+
+-- clear search highlight
+map("n", "<Esc>", ":nohlsearch<CR>", { silent = true })
+EOF
+
+# autocmds.lua
+RUN cat > /root/.config/nvim/lua/autocmds.lua << 'EOF'
+local autocmd = vim.api.nvim_create_autocmd
+local augroup = vim.api.nvim_create_augroup
+
+local filetype_settings = augroup("FileTypeSettings", { clear = true })
+
+autocmd("FileType", {
+  group = filetype_settings,
+  pattern = "make",
+  callback = function()
+    vim.opt_local.tabstop = 8
+    vim.opt_local.softtabstop = 8
+    vim.opt_local.shiftwidth = 8
+    vim.opt_local.expandtab = false
+  end,
+})
+
+autocmd("FileType", {
+  group = filetype_settings,
+  pattern = "yaml",
+  callback = function()
+    vim.opt_local.tabstop = 2
+    vim.opt_local.softtabstop = 2
+    vim.opt_local.shiftwidth = 2
+    vim.opt_local.expandtab = true
+  end,
+})
+
+autocmd("FileType", {
+  group = filetype_settings,
+  pattern = { "html", "css" },
+  callback = function()
+    vim.opt_local.tabstop = 2
+    vim.opt_local.softtabstop = 2
+    vim.opt_local.shiftwidth = 2
+    vim.opt_local.expandtab = true
+  end,
+})
+
+autocmd("FileType", {
+  group = filetype_settings,
+  pattern = "javascript",
+  callback = function()
+    vim.opt_local.tabstop = 4
+    vim.opt_local.softtabstop = 4
+    vim.opt_local.shiftwidth = 4
+    vim.opt_local.expandtab = false
+  end,
+})
+
+autocmd({ "BufNewFile", "BufRead" }, {
+  pattern = "*.rss",
+  callback = function()
+    vim.opt_local.filetype = "xml"
+  end,
+})
+EOF
+
+# plugins
+RUN cat > /root/.config/nvim/lua/plugins/init.lua << 'EOF'
 return {
-  -- add plugins here
+  -- colorscheme
+  {
+    "ellisonleao/gruvbox.nvim",
+    lazy = false,
+    priority = 1000,
+    config = function()
+      require("gruvbox").setup({})
+      vim.cmd("colorscheme gruvbox")
+    end,
+  },
+
+  -- tmux integration
+  {
+    "christoomey/vim-tmux-navigator",
+    lazy = false,
+  },
+
+  -- fuzzy finder (replaces fzf.vim)
+  {
+    "nvim-telescope/telescope.nvim",
+    dependencies = { "nvim-lua/plenary.nvim" },
+    cmd = "Telescope",
+    keys = {
+      { "<C-p>", "<cmd>Telescope find_files<cr>", desc = "Find files" },
+      { "<C-o>", "<cmd>Telescope git_files<cr>", desc = "Git files" },
+      { "<C-f>", "<cmd>Telescope live_grep<cr>", desc = "Live grep" },
+      { "<Leader>fb", "<cmd>Telescope buffers<cr>", desc = "Buffers" },
+      { "<Leader>fh", "<cmd>Telescope help_tags<cr>", desc = "Help tags" },
+    },
+    config = function()
+      require("telescope").setup({
+        defaults = {
+          file_ignore_patterns = { "node_modules", ".git/" },
+        },
+      })
+    end,
+  },
+
+  -- git signs (replaces gitgutter)
+  {
+    "lewis6991/gitsigns.nvim",
+    event = { "BufReadPre", "BufNewFile" },
+    config = function()
+      require("gitsigns").setup({
+        signs = {
+          add = { text = "+" },
+          change = { text = "~" },
+          delete = { text = "_" },
+          topdelete = { text = "‾" },
+          changedelete = { text = "~" },
+        },
+      })
+    end,
+  },
+
+  -- git commands (fugitive)
+  {
+    "tpope/vim-fugitive",
+    cmd = { "Git", "Gdiff", "Gread", "Gwrite" },
+    keys = {
+      { "<Leader>gc", "<cmd>Git commit %<cr>", desc = "Git commit" },
+      { "<Leader>gd", "<cmd>Gdiff<cr>", desc = "Git diff" },
+      { "<Leader>gst", "<cmd>Git<cr>", desc = "Git status" },
+      { "<Leader>gp", "<cmd>Git push<cr>", desc = "Git push" },
+      { "<Leader>gb", "<cmd>Git blame<cr>", desc = "Git blame" },
+    },
+  },
+
+  -- treesitter for better syntax highlighting
+  {
+    "nvim-treesitter/nvim-treesitter",
+    build = ":TSUpdate",
+    event = { "BufReadPost", "BufNewFile" },
+    config = function()
+      require("nvim-treesitter.configs").setup({
+        ensure_installed = { "lua", "vim", "vimdoc", "go", "python", "javascript", "typescript", "json", "yaml", "bash" },
+        auto_install = true,
+        highlight = { enable = true },
+        indent = { enable = true },
+      })
+    end,
+  },
 }
 EOF
 
@@ -106,18 +352,18 @@ RUN chezmoi init
 # set zsh as default shell for root
 RUN chsh -s /bin/zsh root
 
-# cleanup to reduce image size
+# cleanup to reduce image size (keep fzf examples for zsh)
 RUN rm -rf \
     /var/lib/apt/lists/* \
     /var/cache/apt/* \
     /var/log/* \
-    /usr/share/doc/* \
     /usr/share/man/* \
     /usr/share/info/* \
     /usr/share/locale/* \
     /tmp/* \
     /root/.cache/* \
     /opt/mise/cache/* \
+    && find /usr/share/doc -mindepth 1 ! -path "/usr/share/doc/fzf*" -delete 2>/dev/null || true \
     && find / -name "*.pyc" -delete 2>/dev/null || true \
     && find / -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null || true
 
