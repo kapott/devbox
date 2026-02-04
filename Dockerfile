@@ -30,8 +30,12 @@ WORKDIR /home/dev
 # Set TERM for colors
 ENV TERM=xterm-256color
 
-# Init dotfiles
-RUN chezmoi init https://github.com/kapott/dotfiles.git \
+# Init dotfiles with default values (no prompts)
+RUN chezmoi init \
+    --promptString name="Dev Container" \
+    --promptString email="dev@container.local" \
+    --promptString "window manager (kde/gnome/xfce/i3/sway/hyprland/none)"="none" \
+    https://github.com/kapott/dotfiles.git \
     && chezmoi apply
 
 # Install Vundle plugins
