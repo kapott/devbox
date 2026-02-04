@@ -3,8 +3,8 @@ FROM debian:trixie-slim
 # Avoid interactive prompts
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Core packages
-RUN apt-get update && apt-get install -y --no-install-recommends \
+# Upgrade all packages and install core packages
+RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends \
     git \
     curl \
     sudo \
