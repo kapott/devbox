@@ -14,6 +14,12 @@ RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-reco
     tmux \
     && rm -rf /var/lib/apt/lists/*
 
+# Install Vault
+RUN VAULT_VERSION=$(curl -s https://api.releases.hashicorp.com/v1/releases/vault/latest | grep -o '"version":"[^"]*"' | head -1 | cut -d'"' -f4) \
+    && curl -fsSL "https://releases.hashicorp.com/vault/${VAULT_VERSION}/vault_${VAULT_VERSION}_linux_amd64.zip" -o /tmp/vault.zip \
+    && unzip /tmp/vault.zip -d /usr/local/bin/ \
+    && rm /tmp/vault.zip
+
 # Create dev user (UID will be changed at runtime)
 RUN useradd -m -s /bin/bash dev \
     && echo "dev ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
